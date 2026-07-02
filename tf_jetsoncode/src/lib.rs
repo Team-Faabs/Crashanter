@@ -1,12 +1,12 @@
 use crate::communication::communication_receiver;
 use crate::communication::send_cp::send_cp;
-pub use crate::communication::{Events, TeensyRecMSG, TeensySendMsg, send_flags};
+pub use crate::communication::{send_flags, Events, TeensyRecMSG, TeensySendMsg};
 pub use crate::config::Config;
 use crate::robot_logic::helpers::{
   allow_own_penalty_area, ball_avoidance_margin_mm, outside_field,
 };
 use crate::robot_logic::orca::{
-  NavIntent, Orca, OrcaParams, OrcaRequest, WorldSnapshot, nav_command_to_teensy,
+  nav_command_to_teensy, NavIntent, Orca, OrcaParams, OrcaRequest, Vec2i, WorldSnapshot,
 };
 use crate::robot_logic::vec::Vec2f;
 use crate::utils::{CommunicationChannels, PacketBuffer};
@@ -24,14 +24,13 @@ mod utils;
 // Constants
 const TEENSY_SEND_MSG_SIZE: usize = 17;
 const TEENSY_RECEIVE_MSG_SIZE: usize = 7;
-const DEFAULT_ACCEL_MM_S2: u32 = 4_000;
-const DEFAULT_DECEL_MM_S2: u32 = 6_000;
+const DEFAULT_ACCEL_MM_S2: u32 = 2_000;
+const DEFAULT_DECEL_MM_S2: u32 = 3_000;
 
 pub struct Robot<C = CommunicationChannels> {
   config: Config,
   params: OrcaParams,
   orca: Orca,
-  was_goalie: bool,
   goalie_carrier_track: Option<GoalieCarrierTrack>,
   dribble_distance_track: Option<DribbleDistanceTrack>,
   last_button_flags: u32,
@@ -156,7 +155,6 @@ impl<C> Robot<C> {
       config,
       orca,
       params,
-      was_goalie: false,
       goalie_carrier_track: None,
       dribble_distance_track: None,
       last_button_flags: 0,
@@ -269,6 +267,7 @@ impl<C> Robot<C> {
     match CpState::try_from(self.packets.cp_data.cmd.state).unwrap_or(CpState::StateUnspecified) {
       CpState::StateUnspecified => {
         self.packets.robot_msg.set_flag(send_flags::ERROR);
+        self.packets.robot_msg.speed = 0;
       }
       CpState::StateHalt => {
         // Robot is not allowed to move
@@ -281,25 +280,14 @@ impl<C> Robot<C> {
       CpState::StateStop => {
         // Robot is allowed to move with a max speed of
         // 1,5m/s (1500mm/s) & stay away from ball 500mm
-        if self.was_goalie {
-          self.command(&world, true);
-        } else {
-          self.goalie(&world);
-        }
-
-        self.packets.robot_msg.self_orient = orient as u16;
-        self.packets.robot_msg.orient =
-          self.packets.cp_data.cmd.orientation.unwrap_or_default() as u16;
+        self.command(&world, true);
       }
       CpState::StateFree => {
         // Free to listen to commands
-        self.was_goalie = false;
-
         self.command(&world, false);
       }
       CpState::StateGoalie => {
         // Goalie, move into penalty area and protect the goal
-        self.was_goalie = true;
         self.goalie(&world);
       }
       CpState::StateSubstitute => {
@@ -315,6 +303,8 @@ impl<C> Robot<C> {
 
     // Led's
     // Depending on different states, set the led's on the mainboard
+    // Next years problem
+
     // After logic, send new robot command
     self.packets.robot_msg.state = self.packets.cp_data.cmd.state as u8;
     self.packets.robot_msg.vel_x = self.packets.robot_self.vel.unwrap_or_default().x as i16;

@@ -42,6 +42,7 @@ impl<C> Robot<C> {
       CpTask::TaskUnspecified => {
         // UNKNOWN
         self.packets.robot_msg.set_flag(send_flags::ERROR);
+        self.packets.robot_msg.speed = 0;
       }
       CpTask::TaskPos => {
         has_kicked = false;
