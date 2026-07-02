@@ -6,13 +6,8 @@ tmp/
 # Rust code
 tf_jetsoncode/target
 tf_jetsoncode/.idea
-tf_jetsoncode/.cargo
 tf_jetsoncode/.vscode
 
 
-# Teensy code
-teensy_code/.idea
-teensy_code/target/
-teensy_code/.pio
-
-teensy_code/.vscode/
+tf_jetsoncode/.agents/
+tf_jetsoncode/.codex/
