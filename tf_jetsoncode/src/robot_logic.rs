@@ -140,27 +140,18 @@ impl<C> Robot<C> {
         // Rec Kick
         // Pre-spin while receiving so the ball is already captured when it
         // reaches the mouth instead of bouncing before IR latches.
-        self.packets.robot_msg.set_flag(send_flags::DRIBBLER);
-        self.packets.robot_msg.dribbler_pwr = 200;
-
-        if self.packets.teensy_data.has_ball() {
-          self.packets.robot_msg.speed = 0;
-        } else {
-          if ball_vel.norm() >= 200f32 && self.receive_ball() {
-            // Fast pass: intercept on its path.
-          } else if receive_ball::should_collect_slow_receive_ball(robot_pos, ball_pos) {
-            // Slow / slightly missed pass: keep the receiving intent and collect
-            // the loose ball instead of idling while an opponent takes it.
-            self.collect_receive_ball(robot_pos, ball_pos);
-          } else {
-            // Pre-kick RecPass should not make the receiver leave its prepared
-            // lane and chase a stationary ball still held by the passer.
-            self.packets.robot_msg.speed = 0;
-          }
+        if ball_vel.norm() >= 200f32 && !self.packets.teensy_data.has_ball() {
+          self.receive_ball();
 
           // Keep looking at the ball while moving.
           self.packets.robot_msg.orient = (ball_pos - robot_pos).angle_to_u16();
+        } else {
+          self.packets.robot_msg.speed = 0;
         }
+
+        // Always enable dribbler
+        self.packets.robot_msg.set_flag(send_flags::DRIBBLER);
+        self.packets.robot_msg.dribbler_pwr = 200;
       }
       CpTask::TaskSteal => {
         has_kicked = false;
