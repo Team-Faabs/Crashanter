@@ -2,10 +2,10 @@ use crate::communication::TeensySendMsg;
 pub(crate) use crate::robot_logic::vec::Vec2f;
 pub(crate) use crate::robot_logic::{RAW_MAX_SPEED_MM_S, RAW_STOP_RADIUS_MM};
 use core_dump::proto;
-use core_dump::proto::{CpInfos, CpState, CpTask, CpTrackedRobot};
+use core_dump::proto::{CrashpilotInfos, CrashpilotState, CrashpilotTask, CrashpilotTrackedRobot};
 
 #[inline]
-pub(crate) fn own_goal_x(infos: &CpInfos) -> f32 {
+pub(crate) fn own_goal_x(infos: &CrashpilotInfos) -> f32 {
   let half_length = infos.width as f32 * 0.5;
   if infos.team_site {
     -half_length
@@ -15,12 +15,12 @@ pub(crate) fn own_goal_x(infos: &CpInfos) -> f32 {
 }
 
 #[inline]
-pub(crate) fn own_goal_side(infos: &CpInfos) -> f32 {
+pub(crate) fn own_goal_side(infos: &CrashpilotInfos) -> f32 {
   if infos.team_site { -1f32 } else { 1f32 }
 }
 
 #[inline]
-pub(crate) fn inside_own_penalty_area(infos: &CpInfos, pos: Vec2f) -> bool {
+pub(crate) fn inside_own_penalty_area(infos: &CrashpilotInfos, pos: Vec2f) -> bool {
   let goal_x = own_goal_x(infos);
   let goal_side = own_goal_side(infos);
   let penalty_depth = infos.penalty_area_height as f32;
@@ -32,7 +32,7 @@ pub(crate) fn inside_own_penalty_area(infos: &CpInfos, pos: Vec2f) -> bool {
   pos.x >= x_min && pos.x <= x_max && pos.y >= -y_half && pos.y <= y_half
 }
 
-pub(crate) fn outside_field(infos: &CpInfos, pos: Vec2f) -> bool {
+pub(crate) fn outside_field(infos: &CrashpilotInfos, pos: Vec2f) -> bool {
   let x_half = infos.width as f32 * 0.5 + infos.runoff_width as f32;
   let y_half = infos.height as f32 * 0.5 + infos.runoff_width as f32;
 
@@ -40,7 +40,7 @@ pub(crate) fn outside_field(infos: &CpInfos, pos: Vec2f) -> bool {
 }
 
 #[inline]
-pub(crate) fn clamp_to_own_penalty(infos: &CpInfos, point: Vec2f) -> Vec2f {
+pub(crate) fn clamp_to_own_penalty(infos: &CrashpilotInfos, point: Vec2f) -> Vec2f {
   let goal_x = own_goal_x(infos);
   let goal_side = own_goal_side(infos);
   // Clamp the target to the part of the penalty area we want the goalie to use.
@@ -78,13 +78,15 @@ pub(crate) fn raw_movement_accel(dist: f32) -> f32 {
 }
 
 pub(crate) fn ball_avoidance_margin_mm(
-  cp_data: &proto::CpRobot, robot_self: CpTrackedRobot,
+  cp_data: &proto::CrashpilotRobot, robot_self: CrashpilotTrackedRobot,
 ) -> u32 {
-  match CpState::try_from(cp_data.cmd.state).unwrap_or(CpState::StateUnspecified) {
-    CpState::StateStop => 550,
-    CpState::StateFree => {
-      match CpTask::try_from(cp_data.cmd.task).unwrap_or_else(|_| CpTask::TaskUnspecified) {
-        CpTask::TaskSteal => {
+  match CrashpilotState::try_from(cp_data.cmd.state).unwrap_or(CrashpilotState::Unspecified) {
+    CrashpilotState::Stop => 550,
+    CrashpilotState::Free => {
+      match CrashpilotTask::try_from(cp_data.cmd.task)
+        .unwrap_or_else(|_| CrashpilotTask::Unspecified)
+      {
+        CrashpilotTask::Steal => {
           let ball_pos = Vec2f::new_from_cp(cp_data.ball.pos);
           let robot_pos = Vec2f::new_from_cp(robot_self.pos);
           let to_ball = Vec2f::calculate_vector_2f(robot_pos, ball_pos);
@@ -109,10 +111,10 @@ pub(crate) fn ball_avoidance_margin_mm(
   }
 }
 
-pub(crate) fn allow_own_penalty_area(cp_data: &proto::CpRobot) -> bool {
+pub(crate) fn allow_own_penalty_area(cp_data: &proto::CrashpilotRobot) -> bool {
   matches!(
-    CpState::try_from(cp_data.cmd.state),
-    Ok(CpState::StateGoalie)
+    CrashpilotState::try_from(cp_data.cmd.state),
+    Ok(CrashpilotState::Goalie)
   )
 }
 
@@ -136,8 +138,8 @@ pub fn point_at_distance_from_a(a: Vec2f, b: Vec2f, distance: f32) -> Option<Vec
 mod tests {
   use super::*;
 
-  fn infos() -> CpInfos {
-    CpInfos {
+  fn infos() -> CrashpilotInfos {
+    CrashpilotInfos {
       width: 9000,
       height: 6000,
       runoff_width: 300,

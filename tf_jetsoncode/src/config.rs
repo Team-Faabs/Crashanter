@@ -42,12 +42,15 @@ impl Default for CrashPilotConfig {
 pub struct TeensyConfig {
   pub vid: u16,
   pub pid: u16,
+  #[serde(default)]
+  pub simulated: bool,
 }
 impl Default for TeensyConfig {
   fn default() -> Self {
     Self {
       vid: 0x16C0,
       pid: 0x0486,
+      simulated: false,
     }
   }
 }

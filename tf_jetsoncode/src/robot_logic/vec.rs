@@ -1,4 +1,4 @@
-use core_dump::proto::CpVector2;
+use core_dump::proto::CrashpilotVector2;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -14,12 +14,12 @@ impl Vec2i {
   }
 
   #[inline]
-  pub(crate) fn new_from_cp(v: CpVector2) -> Vec2i {
+  pub(crate) fn new_from_cp(v: CrashpilotVector2) -> Vec2i {
     Vec2i::new(v.x, v.y)
   }
 
   #[inline]
-  pub(crate) fn from_cp_vec2(v: &CpVector2) -> Self {
+  pub(crate) fn from_cp_vec2(v: &CrashpilotVector2) -> Self {
     Self { x: v.x, y: v.y }
   }
 
@@ -29,7 +29,7 @@ impl Vec2i {
   }
 
   // #[inline]
-  // pub(crate) fn calculate_vector_2i(a: CpVector2, b: CpVector2) -> Vec2i {
+  // pub(crate) fn calculate_vector_2i(a: CrashpilotVector2, b: CrashpilotVector2) -> Vec2i {
   //   Self::new(a.x - b.x, a.y - b.y)
   // }
 
@@ -101,7 +101,7 @@ impl Vec2f {
   }
 
   #[inline]
-  pub(crate) fn new_from_cp(v: CpVector2) -> Vec2f {
+  pub(crate) fn new_from_cp(v: CrashpilotVector2) -> Vec2f {
     Self::new(v.x as f32, v.y as f32)
   }
 
@@ -161,8 +161,8 @@ impl Vec2f {
   }
 
   // #[inline]
-  // pub(crate) fn vec2f_to_cp(self) -> CpVector2 {
-  //   CpVector2 {
+  // pub(crate) fn vec2f_to_cp(self) -> CrashpilotVector2 {
+  //   CrashpilotVector2 {
   //     x: self.x as i32,
   //     y: self.y as i32,
   //   }
@@ -243,7 +243,7 @@ impl Neg for Vec2f {
 }
 
 #[inline]
-pub(crate) fn distance_cpv_squared(a: CpVector2, b: CpVector2) -> f32 {
+pub(crate) fn distance_cpv_squared(a: CrashpilotVector2, b: CrashpilotVector2) -> f32 {
   let dx = (a.x - b.x) as f32;
   let dy = (a.y - b.y) as f32;
   dx * dx + dy * dy

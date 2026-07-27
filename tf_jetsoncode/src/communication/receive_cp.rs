@@ -1,5 +1,5 @@
 use crate::communication::EventShare;
-use core_dump::proto::CpRobot;
+use core_dump::proto::CrashpilotRobot;
 use prost::Message;
 
 pub fn receive_cp(addr: String, tx: EventShare) {
@@ -17,12 +17,12 @@ pub fn receive_cp(addr: String, tx: EventShare) {
     loop {
       match cp_socket.recv_from(&mut buf).await {
         Ok((size, _)) => {
-          if let Ok(mut latest_msg) = CpRobot::decode(&buf[..size]) {
+          if let Ok(mut latest_msg) = CrashpilotRobot::decode(&buf[..size]) {
             // Drain all buffered packets, keeping only the most recent
             loop {
               match cp_socket.try_recv_from(&mut buf) {
                 Ok((size, _)) => {
-                  if let Ok(msg) = CpRobot::decode(&buf[..size]) {
+                  if let Ok(msg) = CrashpilotRobot::decode(&buf[..size]) {
                     latest_msg = msg;
                   }
                 }

@@ -9,29 +9,29 @@ pub struct CommunicationChannels {
 }
 
 pub struct PacketBuffer {
-  pub cp_data: proto::CpRobot,
+  pub cp_data: proto::CrashpilotRobot,
   pub vision_data: communication::VisionMsg,
   pub teensy_data: communication::TeensyRecMSG,
   pub robot_msg: communication::TeensySendMsg,
-  pub robot_self: proto::CpTrackedRobot,
+  pub robot_self: proto::CrashpilotTrackedRobot,
 }
 
 impl PacketBuffer {
   pub fn clear(&mut self) {
-    self.cp_data = proto::CpRobot::default();
+    self.cp_data = proto::CrashpilotRobot::default();
     self.vision_data = communication::VisionMsg::default();
     self.teensy_data = communication::TeensyRecMSG::default();
     self.robot_msg = communication::TeensySendMsg::default();
-    self.robot_self = proto::CpTrackedRobot::default();
+    self.robot_self = proto::CrashpilotTrackedRobot::default();
   }
 
   pub fn new() -> Self {
     Self {
-      cp_data: proto::CpRobot::default(),
+      cp_data: proto::CrashpilotRobot::default(),
       vision_data: communication::VisionMsg::default(),
       teensy_data: communication::TeensyRecMSG::default(),
       robot_msg: communication::TeensySendMsg::default(),
-      robot_self: proto::CpTrackedRobot::default(),
+      robot_self: proto::CrashpilotTrackedRobot::default(),
     }
   }
 }

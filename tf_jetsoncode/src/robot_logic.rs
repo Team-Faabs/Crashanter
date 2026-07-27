@@ -1,11 +1,11 @@
 use crate::communication::send_flags;
 use crate::robot_logic::helpers::raw_move_towards;
 use crate::robot_logic::orca::{
-  nav_command_to_teensy, NavIntent, OrcaRequest, Vec2i, WorldSnapshot,
+  NavIntent, OrcaRequest, Vec2i, WorldSnapshot, nav_command_to_teensy,
 };
-use crate::robot_logic::vec::{distance_cpv_squared, Vec2f};
+use crate::robot_logic::vec::{Vec2f, distance_cpv_squared};
 use crate::{DribbleDistanceTrack, Robot};
-use core_dump::proto::CpTask;
+use core_dump::proto::CrashpilotTask;
 
 mod defense;
 mod get_ball;
@@ -38,13 +38,15 @@ impl<C> Robot<C> {
     let ball_vel = Vec2f::new_from_cp(self.packets.cp_data.ball.vel.unwrap_or_default());
     let mut has_kicked: bool = false;
 
-    match CpTask::try_from(self.packets.cp_data.cmd.task).unwrap_or(CpTask::TaskUnspecified) {
-      CpTask::TaskUnspecified => {
+    match CrashpilotTask::try_from(self.packets.cp_data.cmd.task)
+      .unwrap_or(CrashpilotTask::Unspecified)
+    {
+      CrashpilotTask::Unspecified => {
         // UNKNOWN
         self.packets.robot_msg.set_flag(send_flags::ERROR);
         self.packets.robot_msg.speed = 0;
       }
-      CpTask::TaskPos => {
+      CrashpilotTask::Pos => {
         has_kicked = false;
         // Speed check
         let max_speed_mm_s = if self.packets.cp_data.cmd.speed > Some(1500) && stop {
@@ -96,7 +98,7 @@ impl<C> Robot<C> {
           self.packets.robot_msg.dribbler_pwr = 200;
         }
       }
-      CpTask::TaskKick => {
+      CrashpilotTask::Kick => {
         let kick_orient = self.packets.cp_data.cmd.kick_orient.unwrap_or_default() as u16;
         let kick_power = self.packets.cp_data.cmd.kick_speed.unwrap_or_default();
         self.packets.robot_msg.set_flag(send_flags::DRIBBLER);
@@ -113,7 +115,7 @@ impl<C> Robot<C> {
           has_kicked = true;
         }
       }
-      CpTask::TaskChip => {
+      CrashpilotTask::Chip => {
         // Chip in kick dir
         // First rotate robot
         if heading_error_deg(
@@ -135,7 +137,7 @@ impl<C> Robot<C> {
           has_kicked = true;
         }
       }
-      CpTask::TaskRecKick => {
+      CrashpilotTask::RecKick => {
         has_kicked = false;
         // Rec Kick
         // Pre-spin while receiving so the ball is already captured when it
@@ -162,12 +164,12 @@ impl<C> Robot<C> {
           self.packets.robot_msg.orient = (ball_pos - robot_pos).angle_to_u16();
         }
       }
-      CpTask::TaskSteal => {
+      CrashpilotTask::Steal => {
         has_kicked = false;
         // Steal Ball
         self.get_ball(world);
       }
-      CpTask::TaskDribble => {
+      CrashpilotTask::Dribble => {
         has_kicked = false;
         // Dribble the Ball
         // Run the steal algorithm, until we have the ball in the ball capturing zone
@@ -191,7 +193,7 @@ impl<C> Robot<C> {
           self.get_ball(world);
         }
       }
-      CpTask::TaskBlock => {
+      CrashpilotTask::Block => {
         has_kicked = false;
         // Block a robot from receiving the ball
         // If enemy_id == None, defend own penalty area, else block robot
@@ -207,7 +209,7 @@ impl<C> Robot<C> {
         // Keep looking at the ball while moving.
         self.packets.robot_msg.orient = (ball_pos - robot_pos).angle_to_u16();
       }
-      CpTask::TaskPosBall => {
+      CrashpilotTask::PosBall => {
         has_kicked = false;
         // Position the Ball
         // Run the steal algorithm, until we have the ball in the ball capturing zone
@@ -231,11 +233,11 @@ impl<C> Robot<C> {
           self.get_ball(world);
         }
       }
-      CpTask::StateKickoff => {
+      CrashpilotTask::Kickoff => {
         has_kicked = false;
         // Kickoff
       }
-      CpTask::StateFreekick => {
+      CrashpilotTask::Freekick => {
         has_kicked = false;
         // Free kick
       }

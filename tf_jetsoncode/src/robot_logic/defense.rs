@@ -3,7 +3,7 @@ use crate::robot_logic::helpers::{Vec2f, own_goal_side, point_at_distance_from_a
 use crate::robot_logic::orca::{
   NavIntent, OrcaRequest, Vec2i, WorldSnapshot, nav_command_to_teensy,
 };
-use core_dump::proto::CpTrackedRobot;
+use core_dump::proto::CrashpilotTrackedRobot;
 
 impl<C> Robot<C> {
   #[inline]
@@ -20,7 +20,7 @@ impl<C> Robot<C> {
           .robots_blue
           .iter()
           .find(|r| r.robot_id == self.packets.cp_data.cmd.enemy_id.unwrap_or_default())
-          .unwrap_or(&CpTrackedRobot::default())
+          .unwrap_or(&CrashpilotTrackedRobot::default())
           .pos,
       ),
       // True stands for being in the blue team
@@ -31,7 +31,7 @@ impl<C> Robot<C> {
           .robots_yellow
           .iter()
           .find(|r| r.robot_id == self.packets.cp_data.cmd.enemy_id.unwrap_or_default())
-          .unwrap_or(&CpTrackedRobot::default())
+          .unwrap_or(&CrashpilotTrackedRobot::default())
           .pos,
       ),
     };

@@ -5,7 +5,7 @@
 //!   remain simple and deterministic.
 //!
 //! ## Intended data flow (500 Hz main loop)
-//! 1. Main loop receives latest packets (`CpRobot`, Teensy IMU, onboard vision, ...).
+//! 1. Main loop receives latest packets (`CrashpilotRobot`, Teensy IMU, onboard vision, ...).
 //! 2. Main loop builds a `WorldSnapshot` + `NavIntent`.
 //! 3. Main loop calls `orca.step(...)` and translates the returned `NavCommand` to your
 //!    motor/teensy protocol.
@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use crate::communication::TeensySendMsg;
 use crate::robot_logic::vec::Vec2f;
 pub use crate::robot_logic::vec::Vec2i;
-use core_dump::proto::{CpInfos, CpRobot, CpTrackedRobot};
+use core_dump::proto::{CrashpilotInfos, CrashpilotRobot, CrashpilotTrackedRobot};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MovingObstacle {
@@ -54,7 +54,7 @@ pub struct FieldGeometry {
 }
 
 impl FieldGeometry {
-  fn from_config(infos: &CpInfos) -> Self {
+  fn from_config(infos: &CrashpilotInfos) -> Self {
     Self {
       width_mm: infos.width as f32,
       height_mm: infos.height as f32,
@@ -148,7 +148,7 @@ impl WorldSnapshot {
   /// - The caller is responsible for providing the correct self robot.
   /// - Units are assumed to already be *millimeters* and *millimeters/second* as described.
   pub fn from_cp(
-    cp: &CpRobot, self_robot: &CpTrackedRobot, default_robot_radius_mm: u32,
+    cp: &CrashpilotRobot, self_robot: &CrashpilotTrackedRobot, default_robot_radius_mm: u32,
     ball_avoidance_radius_mm: u32, allow_own_penalty_area: bool, ignored_robot_ids: &[u32],
   ) -> Self {
     let self_id = self_robot.robot_id;
@@ -206,8 +206,8 @@ impl WorldSnapshot {
 }
 
 fn append_others(
-  out: &mut Vec<OtherRobot>, src: &[CpTrackedRobot], self_id: u32, ignored_robot_ids: &[u32],
-  default_radius_mm: u32,
+  out: &mut Vec<OtherRobot>, src: &[CrashpilotTrackedRobot], self_id: u32,
+  ignored_robot_ids: &[u32], default_radius_mm: u32,
 ) {
   for r in src {
     if r.robot_id == self_id || ignored_robot_ids.contains(&r.robot_id) {

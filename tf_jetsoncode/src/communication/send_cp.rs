@@ -1,10 +1,12 @@
 use crate::config;
-use core_dump::proto::RobotCp;
+use core_dump::proto::CrashpilotRobotFeedback;
 use prost::Message;
 use std::net::{SocketAddr, SocketAddrV4};
 use tokio::net::UdpSocket;
 
-pub async fn send_cp(cfg: &config::Config, socket: &UdpSocket, msg: RobotCp, buf: &mut Vec<u8>) {
+pub async fn send_cp(
+  cfg: &config::Config, socket: &UdpSocket, msg: CrashpilotRobotFeedback, buf: &mut Vec<u8>,
+) {
   buf.clear();
   let encoded_len = msg.encoded_len();
   if buf.capacity() < encoded_len {

@@ -2,7 +2,7 @@ use crate::communication::receive_cp::receive_cp;
 use crate::communication::receive_onboard_vision::receive_onboard_vision;
 use crate::communication::teensy_communication::teensy_communication;
 use crate::{TEENSY_SEND_MSG_SIZE, config};
-use core_dump::proto::CpRobot;
+use core_dump::proto::CrashpilotRobot;
 use std::sync::Arc;
 use tokio::sync::{Notify, RwLock};
 
@@ -191,7 +191,7 @@ impl TeensyOut {
 
 #[derive(Default, Clone, Debug)]
 pub struct Events {
-  pub cp: Option<CpRobot>,
+  pub cp: Option<CrashpilotRobot>,
   pub vis: Option<VisionMsg>,
   pub teensy: Option<TeensyRecMSG>,
 }
@@ -230,7 +230,9 @@ pub fn communication_receiver(cfg: &config::Config) -> anyhow::Result<Communicat
 
   receive_onboard_vision(cfg.onboard_vision_socket_path.clone(), events.clone());
 
-  teensy_communication(cfg, events.clone(), teensy.clone());
+  if !cfg.teensy.simulated {
+    teensy_communication(cfg, events.clone(), teensy.clone());
+  }
 
   Ok(CommunicationHandles { events, teensy })
 }

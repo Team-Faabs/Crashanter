@@ -1,17 +1,21 @@
 use crate::communication::communication_receiver;
+pub use crate::communication::receive_cp::receive_cp;
 use crate::communication::send_cp::send_cp;
-pub use crate::communication::{send_flags, Events, TeensyRecMSG, TeensySendMsg};
+pub use crate::communication::{EventShare, TeensyOut};
+pub use crate::communication::{Events, TeensyRecMSG, TeensySendMsg, send_flags};
 pub use crate::config::Config;
 use crate::robot_logic::helpers::{
   allow_own_penalty_area, ball_avoidance_margin_mm, outside_field,
 };
 use crate::robot_logic::orca::{
-  nav_command_to_teensy, NavIntent, Orca, OrcaParams, OrcaRequest, Vec2i, WorldSnapshot,
+  NavIntent, Orca, OrcaParams, OrcaRequest, WorldSnapshot, nav_command_to_teensy,
 };
 use crate::robot_logic::vec::Vec2f;
-use crate::utils::{CommunicationChannels, PacketBuffer};
+pub use crate::utils::CommunicationChannels;
+use crate::utils::PacketBuffer;
 pub use core_dump::proto::{
-  CpBall, CpCommand, CpRobot, CpState, CpTrackedRobot, CpVector2, RobotCp,
+  CrashpilotBall, CrashpilotCommand, CrashpilotRobot, CrashpilotRobotFeedback, CrashpilotState,
+  CrashpilotTrackedRobot, CrashpilotVector2,
 };
 use std::time::Duration;
 use tracing::info;
@@ -61,6 +65,12 @@ impl Robot {
       Err(e) => panic!("{}", e),
     };
 
+    Self::with_config(config).await
+  }
+
+  pub async fn with_config(config: Config) -> Self {
+    let simulated_teensy = config.teensy.simulated;
+
     // Get communication channels
     let communication = match communication_receiver(&config) {
       Ok(communication) => communication,
@@ -71,15 +81,17 @@ impl Robot {
     let tx = communication.teensy;
 
     // Udp Socket to send data back to the CrashPilot
-    let udp_socket =
-      match tokio::net::UdpSocket::bind(format!("0.0.0.0:{}", config.cp_config.port_outgoing + 2))
-        .await
-      {
-        Ok(s) => s,
-        Err(e) => {
-          panic!("Failed to create udp socket for sending cp data: {}", e);
-        }
-      };
+    let bind_addr = if simulated_teensy {
+      "0.0.0.0:0".to_string()
+    } else {
+      format!("0.0.0.0:{}", config.cp_config.port_outgoing + 2)
+    };
+    let udp_socket = match tokio::net::UdpSocket::bind(bind_addr).await {
+      Ok(s) => s,
+      Err(e) => {
+        panic!("Failed to create udp socket for sending cp data: {}", e);
+      }
+    };
 
     let comm = CommunicationChannels { rx, tx, udp_socket };
 
@@ -128,6 +140,16 @@ impl Robot {
       &mut self.cp_send_buf,
     )
     .await;
+  }
+}
+
+impl Robot<CommunicationChannels> {
+  pub fn events(&self) -> EventShare {
+    self.comm.rx.clone()
+  }
+
+  pub fn teensy_out(&self) -> TeensyOut {
+    self.comm.tx.clone()
   }
 }
 
@@ -202,8 +224,8 @@ impl<C> Robot<C> {
     }
   }
 
-  pub fn cp_packet(&self) -> RobotCp {
-    RobotCp {
+  pub fn cp_packet(&self) -> CrashpilotRobotFeedback {
+    CrashpilotRobotFeedback {
       robot_id: self.config.robot_id as u32,
       battery_voltage: Some(self.packets.teensy_data.batt_level as u32),
       current: Some(self.packets.teensy_data.current as u32),
@@ -220,7 +242,7 @@ impl<C> Robot<C> {
     }
   }
 
-  pub fn step_with_data(&mut self, events: Events) -> (TeensySendMsg, RobotCp) {
+  pub fn step_with_data(&mut self, events: Events) -> (TeensySendMsg, CrashpilotRobotFeedback) {
     self.interpret(events);
     self.update();
 
@@ -264,12 +286,14 @@ impl<C> Robot<C> {
     self.packets.robot_self.orientation = orient;
     self.packets.robot_msg.self_orient = self.packets.robot_self.orientation as u16;
     // Game Logic
-    match CpState::try_from(self.packets.cp_data.cmd.state).unwrap_or(CpState::StateUnspecified) {
-      CpState::StateUnspecified => {
+    match CrashpilotState::try_from(self.packets.cp_data.cmd.state)
+      .unwrap_or(CrashpilotState::Unspecified)
+    {
+      CrashpilotState::Unspecified => {
         self.packets.robot_msg.set_flag(send_flags::ERROR);
         self.packets.robot_msg.speed = 0;
       }
-      CpState::StateHalt => {
+      CrashpilotState::Halt => {
         // Robot is not allowed to move
         let nav_command = self.orca.step(OrcaRequest {
           world: &world,
@@ -277,20 +301,20 @@ impl<C> Robot<C> {
         });
         nav_command_to_teensy(&mut self.packets.robot_msg, nav_command);
       }
-      CpState::StateStop => {
+      CrashpilotState::Stop => {
         // Robot is allowed to move with a max speed of
         // 1,5m/s (1500mm/s) & stay away from ball 500mm
         self.command(&world, true);
       }
-      CpState::StateFree => {
+      CrashpilotState::Free => {
         // Free to listen to commands
         self.command(&world, false);
       }
-      CpState::StateGoalie => {
+      CrashpilotState::Goalie => {
         // Goalie, move into penalty area and protect the goal
         self.goalie(&world);
       }
-      CpState::StateSubstitute => {
+      CrashpilotState::Substitute => {
         // Substitute
         // HALT
         let nav_command = self.orca.step(OrcaRequest {

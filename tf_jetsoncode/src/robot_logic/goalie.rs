@@ -1,12 +1,12 @@
 use crate::communication::send_flags;
+use crate::robot_logic::RAW_MAX_SPEED_MM_S;
 use crate::robot_logic::helpers::{
   clamp_to_own_penalty, inside_own_penalty_area, own_goal_side, own_goal_x,
 };
-use crate::robot_logic::orca::{nav_command_to_teensy, NavIntent, OrcaRequest, WorldSnapshot};
+use crate::robot_logic::orca::{NavIntent, OrcaRequest, WorldSnapshot, nav_command_to_teensy};
 use crate::robot_logic::vec::{Vec2f, Vec2i};
-use crate::robot_logic::RAW_MAX_SPEED_MM_S;
 use crate::{GoalieCarrierTrack, Robot};
-use core_dump::proto::{CpInfos, CpRobot, CpTrackedRobot};
+use core_dump::proto::{CrashpilotInfos, CrashpilotRobot, CrashpilotTrackedRobot};
 
 // How far the goalie should stay in front of the goal line when guarding.
 const GOAL_LINE_MARGIN_MM: f32 = 120f32;
@@ -136,7 +136,7 @@ fn should_run_goalie_dribbler(self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f)
 
 #[inline]
 fn should_preempt_goalie_dribbler(
-  infos: &CpInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
+  infos: &CrashpilotInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
 ) -> bool {
   if should_run_goalie_dribbler(self_pos, ball_pos, ball_vel) {
     return true;
@@ -155,7 +155,7 @@ fn should_preempt_goalie_dribbler(
 
 #[inline]
 fn should_collect_goalie_ball(
-  infos: &CpInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
+  infos: &CrashpilotInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
 ) -> bool {
   if (ball_pos - self_pos).norm_squared() > CATCH_BALL_RANGE_MM * CATCH_BALL_RANGE_MM {
     return false;
@@ -168,7 +168,7 @@ fn should_collect_goalie_ball(
 }
 
 #[inline]
-fn ball_is_exiting_own_penalty(infos: &CpInfos, ball_pos: Vec2f, ball_vel: Vec2f) -> bool {
+fn ball_is_exiting_own_penalty(infos: &CrashpilotInfos, ball_pos: Vec2f, ball_vel: Vec2f) -> bool {
   let goal_x = own_goal_x(infos);
   let goal_side = own_goal_side(infos);
   let penalty_depth = infos.penalty_area_height as f32;
@@ -183,7 +183,7 @@ fn ball_is_exiting_own_penalty(infos: &CpInfos, ball_pos: Vec2f, ball_vel: Vec2f
 }
 
 #[inline]
-fn goalie_collect_target(infos: &CpInfos, ball_pos: Vec2f, ball_vel: Vec2f) -> Vec2f {
+fn goalie_collect_target(infos: &CrashpilotInfos, ball_pos: Vec2f, ball_vel: Vec2f) -> Vec2f {
   let speed = ball_vel.norm();
   let lead = if speed > CATCH_BALL_SPEED_MM_S {
     ball_vel * CATCH_LEAD_S
@@ -194,7 +194,7 @@ fn goalie_collect_target(infos: &CpInfos, ball_pos: Vec2f, ball_vel: Vec2f) -> V
 }
 
 #[inline]
-fn clamp_to_goalie_collect_area(infos: &CpInfos, point: Vec2f) -> Vec2f {
+fn clamp_to_goalie_collect_area(infos: &CrashpilotInfos, point: Vec2f) -> Vec2f {
   let goal_x = own_goal_x(infos);
   let goal_side = own_goal_side(infos);
   let penalty_depth = infos.penalty_area_height as f32;
@@ -231,7 +231,7 @@ fn goalie_move_towards(
 
 #[inline]
 fn goalie_target(
-  infos: &CpInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
+  infos: &CrashpilotInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
   carrier_prediction: Option<CarrierShotPrediction>,
 ) -> Vec2f {
   // Own goal is on x- or x+ depending on the robot_goal setting.
@@ -267,7 +267,7 @@ fn goalie_target(
 
 #[inline]
 fn predict_carrier_shot(
-  cp_data: &CpRobot, ball_pos: Vec2f, track: &mut Option<GoalieCarrierTrack>,
+  cp_data: &CrashpilotRobot, ball_pos: Vec2f, track: &mut Option<GoalieCarrierTrack>,
 ) -> Option<CarrierShotPrediction> {
   let carrier = opponent_carrier(cp_data, ball_pos)?;
   let (angular_vel_deg_s, possession_time_s) =
@@ -282,7 +282,7 @@ fn predict_carrier_shot(
 }
 
 #[inline]
-fn opponent_carrier(cp_data: &CpRobot, ball_pos: Vec2f) -> Option<CpTrackedRobot> {
+fn opponent_carrier(cp_data: &CrashpilotRobot, ball_pos: Vec2f) -> Option<CrashpilotTrackedRobot> {
   let opponents = if cp_data.infos.team_color {
     &cp_data.robots_yellow
   } else {
@@ -307,7 +307,7 @@ fn opponent_carrier(cp_data: &CpRobot, ball_pos: Vec2f) -> Option<CpTrackedRobot
 }
 
 #[inline]
-fn goalie_pass_target(cp_data: &CpRobot, self_pos: Vec2f) -> Option<GoaliePassTarget> {
+fn goalie_pass_target(cp_data: &CrashpilotRobot, self_pos: Vec2f) -> Option<GoaliePassTarget> {
   let own = if cp_data.infos.team_color {
     &cp_data.robots_blue
   } else {
@@ -356,7 +356,8 @@ fn goalie_pass_target(cp_data: &CpRobot, self_pos: Vec2f) -> Option<GoaliePassTa
 
 #[inline]
 fn estimate_carrier_angular_velocity(
-  cp_data: &CpRobot, carrier: CpTrackedRobot, track: &mut Option<GoalieCarrierTrack>,
+  cp_data: &CrashpilotRobot, carrier: CrashpilotTrackedRobot,
+  track: &mut Option<GoalieCarrierTrack>,
 ) -> (f32, f64) {
   let heading_deg = carrier.orientation as f32;
   let timestamp_s = cp_data.timestamp;
@@ -387,7 +388,7 @@ fn estimate_carrier_angular_velocity(
 }
 
 #[inline]
-fn opponent_shot_lane_blocked(cp_data: &CpRobot, carrier: CpTrackedRobot) -> bool {
+fn opponent_shot_lane_blocked(cp_data: &CrashpilotRobot, carrier: CrashpilotTrackedRobot) -> bool {
   let carrier_pos = Vec2f::new_from_cp(carrier.pos);
   let goal = Vec2f::new(own_goal_x(&cp_data.infos), 0f32);
   let lane = goal - carrier_pos;
@@ -425,7 +426,7 @@ fn opponent_shot_lane_blocked(cp_data: &CpRobot, carrier: CpTrackedRobot) -> boo
 
 #[inline]
 fn predict_carrier_shot_from_state(
-  infos: &CpInfos, carrier: CpTrackedRobot, angular_vel_deg_s: f32,
+  infos: &CrashpilotInfos, carrier: CrashpilotTrackedRobot, angular_vel_deg_s: f32,
 ) -> Option<CarrierShotPrediction> {
   let carrier_pos = Vec2f::new_from_cp(carrier.pos);
   let goal_x = own_goal_x(infos);
@@ -450,7 +451,7 @@ fn predict_carrier_shot_from_state(
 }
 
 #[inline]
-fn clamp_carrier_goal_y(infos: &CpInfos, goal_y: f32, angular_vel_deg_s: f32) -> f32 {
+fn clamp_carrier_goal_y(infos: &CrashpilotInfos, goal_y: f32, angular_vel_deg_s: f32) -> f32 {
   let goal_width = infos.goal_width as f32;
   let goal_half_width = goal_width * 0.5;
   let turning_limit = goal_half_width + goal_width * TURNING_EXTRA_GOAL_WIDTH;
@@ -511,7 +512,7 @@ fn heading_error_deg(current: i32, target: i32) -> i32 {
 
 #[inline]
 pub(crate) fn predict_intercept(
-  infos: &CpInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
+  infos: &CrashpilotInfos, self_pos: Vec2f, ball_pos: Vec2f, ball_vel: Vec2f,
 ) -> Option<Vec2f> {
   let goal_x = own_goal_x(infos);
   let goal_side = own_goal_side(infos);
@@ -569,10 +570,10 @@ pub(crate) fn predict_intercept(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use core_dump::proto::CpVector2;
+  use core_dump::proto::CrashpilotVector2;
 
-  fn infos() -> CpInfos {
-    CpInfos {
+  fn infos() -> CrashpilotInfos {
+    CrashpilotInfos {
       team_color: true,
       width: 9000,
       height: 6000,
@@ -584,18 +585,18 @@ mod tests {
     }
   }
 
-  fn robot(id: u32, x: i32, y: i32, heading_deg: i32) -> CpTrackedRobot {
-    CpTrackedRobot {
+  fn robot(id: u32, x: i32, y: i32, heading_deg: i32) -> CrashpilotTrackedRobot {
+    CrashpilotTrackedRobot {
       robot_id: id,
-      pos: CpVector2 { x, y },
+      pos: CrashpilotVector2 { x, y },
       orientation: heading_deg,
       vel: None,
       visibility: 255,
     }
   }
 
-  fn cp_robot() -> CpRobot {
-    CpRobot {
+  fn cp_robot() -> CrashpilotRobot {
+    CrashpilotRobot {
       robot_id: 0,
       infos: infos(),
       ..Default::default()
@@ -638,7 +639,7 @@ mod tests {
   fn new_carrier_is_not_used_for_goalie_shot_prediction() {
     let mut cp_data = cp_robot();
     cp_data.timestamp = 10f64;
-    cp_data.ball.pos = CpVector2 { x: -1500, y: 0 };
+    cp_data.ball.pos = CrashpilotVector2 { x: -1500, y: 0 };
     cp_data.robots_yellow = vec![robot(1, -1500, 0, 180)];
     let mut track = None;
 
@@ -651,7 +652,7 @@ mod tests {
   fn blocked_carrier_is_not_used_for_goalie_shot_prediction() {
     let mut cp_data = cp_robot();
     cp_data.timestamp = 10f64;
-    cp_data.ball.pos = CpVector2 { x: -1500, y: 0 };
+    cp_data.ball.pos = CrashpilotVector2 { x: -1500, y: 0 };
     cp_data.robots_blue = vec![robot(0, -2500, 0, 0)];
     cp_data.robots_yellow = vec![robot(1, -1500, 0, 180)];
     let mut track = Some(GoalieCarrierTrack {
