@@ -1,0 +1,9 @@
+[package]
+name = "faabson"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hidapi = { version = "2.6.6", default-features = false, features = ["linux-static-libusb"] }
+core_dump = { git = "https://github.com/Technulgy-LGNU/core-dump" }
+tokio = { version = "1.52.3", features = ["rt", "rt-multi-thread", "macros", "net", "sync", "time"] }
