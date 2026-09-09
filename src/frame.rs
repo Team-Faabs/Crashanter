@@ -6,7 +6,23 @@ use core_dump::{protocol::robot_command_wire::RobotCommandWire, vec::types::{Vec
 pub struct DataFrame {
   pub sensors: Sensors,
   pub commands: RobotCommandWire,
+  pub odometry: OdometryInput,
 }
+
+pub struct OdometryInput {
+  pub radio: RobotOdometry,
+  pub vision: Option<RobotOdometry>,
+}
+
+pub struct RobotOdometry {
+  pub position: Vec2<f32>,
+  pub orientation: Option<i16>, // might be none for the Radio as it might not be able to sense AoA
+
+  pub velocity: Option<Vec2<f32>>,
+  pub angular_velocity: Option<f32>,
+}
+
+
 
 pub struct Sensors {
   pub imu: ImuData,
