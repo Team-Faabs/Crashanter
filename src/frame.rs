@@ -5,7 +5,7 @@ use core_dump::{protocol::robot_command_wire::RobotCommandWire, vec::types::{Vec
 
 pub struct DataFrame {
   pub sensors: Sensors,
-  pub commands: RobotCommandWire,
+  pub commands: RobotCommand,
   pub odometry: OdometryInput,
 }
 
@@ -20,6 +20,26 @@ pub struct RobotOdometry {
 
   pub velocity: Option<Vec2<f32>>,
   pub angular_velocity: Option<f32>,
+}
+
+pub struct RobotCommand {
+  pub cmd: DriveCommand,
+  pub kick_speed: u8,
+  pub dribbler_speed: u8,
+  pub flags: u8,
+}
+
+pub enum DriveCommand {
+  Velocity {
+    vel: Vec2<f32>,
+    drive_dir: f32,
+    omega: f32,
+  },
+  Position {
+    pos: Vec2<f32>,
+    drive_dir: f32,
+    omega: f32,
+  }
 }
 
 
