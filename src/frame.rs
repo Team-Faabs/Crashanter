@@ -10,7 +10,7 @@ pub struct DataFrame {
 
 pub struct Sensors {
   pub imu: ImuData,
-  pub compass: Option<Vec3<f64>>,
+  pub compass: Option<Vec3<f32>>,
   pub encoder: Encoder,
   pub camera: Camera,
 }
@@ -21,8 +21,8 @@ pub struct ImuData {
 }
 
 pub struct Imu {
-  pub acc: Vec3<f64>,
-  pub angular: Vec3<f64>,
+  pub acc: Vec3<f32>,
+  pub angular: Vec3<f32>,
 }
 
 pub struct Encoder {
