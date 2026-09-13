@@ -47,6 +47,7 @@ pub struct Sensors {
   pub compass: Option<Vec3<f32>>,
   pub encoder: DriveEncoder,
   pub camera: Camera,
+  pub kicker: KickerStatus,
 }
 
 pub struct ImuData {
@@ -70,6 +71,13 @@ pub struct Encoder {
   pub rpm: f32,
   pub ticks: u32,
   pub forward_ticks: i32,
+}
+
+pub enum KickerStatus {
+  Ready,
+  Error,
+  Charging,
+  Overvoltage,
 }
 
 pub struct Camera {
