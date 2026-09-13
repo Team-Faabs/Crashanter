@@ -1,6 +1,4 @@
-use core_dump::{protocol::robot_command_wire::RobotCommandWire, vec::types::{Vec2, Vec3}};
-
-
+use core_dump::vec::types::{Vec2, Vec3};
 
 
 pub struct DataFrame {
@@ -47,7 +45,7 @@ pub enum DriveCommand {
 pub struct Sensors {
   pub imu: ImuData,
   pub compass: Option<Vec3<f32>>,
-  pub encoder: Encoder,
+  pub encoder: DriveEncoder,
   pub camera: Camera,
 }
 
@@ -61,8 +59,17 @@ pub struct Imu {
   pub angular: Vec3<f32>,
 }
 
+pub struct DriveEncoder {
+  pub fl: Encoder,
+  pub fr: Encoder,
+  pub bl: Encoder,
+  pub br: Encoder,
+}
+
 pub struct Encoder {
-  
+  pub rpm: f32,
+  pub ticks: u32,
+  pub forward_ticks: i32,
 }
 
 pub struct Camera {
