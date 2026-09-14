@@ -40,19 +40,19 @@ pub enum DriveCommand {
   }
 }
 
+pub struct Stamped<T> {
+  pub timestamp_us: u64,
+  pub value: T,
+}
+
 
 
 pub struct Sensors {
-  pub imu: ImuData,
+  pub imu: Stamped<Imu>,
   pub compass: Option<Vec3<f32>>,
   pub encoder: DriveEncoder,
   pub camera: Camera,
   pub kicker: KickerStatus,
-}
-
-pub struct ImuData {
-  pub a: Imu,
-  pub b: Imu,
 }
 
 pub struct Imu {
