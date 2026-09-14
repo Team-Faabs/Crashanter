@@ -81,5 +81,6 @@ pub enum KickerStatus {
 }
 
 pub struct Camera {
-  
+  pub ball_angle: f32,
+  pub ball_distance: f32,
 }
